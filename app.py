@@ -1,1 +1,154 @@
-{"nbformat":4,"nbformat_minor":0,"metadata":{"colab":{"provenance":[],"authorship_tag":"ABX9TyOb9qtfYupak+0t06efu222"},"kernelspec":{"name":"python3","display_name":"Python 3"},"language_info":{"name":"python"}},"cells":[{"cell_type":"code","execution_count":null,"metadata":{"id":"ogcTYYbkLrTt","colab":{"base_uri":"https://localhost:8080/","height":383},"executionInfo":{"status":"error","timestamp":1774524204660,"user_tz":-240,"elapsed":20,"user":{"displayName":"Surya ks","userId":"15489366170047166168"}},"outputId":"1a445d9d-ed4e-4e32-c098-9e75a76bc1b6"},"outputs":[{"output_type":"error","ename":"ModuleNotFoundError","evalue":"No module named 'streamlit'","traceback":["\u001b[0;31m---------------------------------------------------------------------------\u001b[0m","\u001b[0;31mModuleNotFoundError\u001b[0m                       Traceback (most recent call last)","\u001b[0;32m/tmp/ipykernel_2899/776705226.py\u001b[0m in \u001b[0;36m<cell line: 0>\u001b[0;34m()\u001b[0m\n\u001b[0;32m----> 1\u001b[0;31m \u001b[0;32mimport\u001b[0m \u001b[0mstreamlit\u001b[0m \u001b[0;32mas\u001b[0m \u001b[0mst\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0m\u001b[1;32m      2\u001b[0m \u001b[0;32mimport\u001b[0m \u001b[0mnumpy\u001b[0m \u001b[0;32mas\u001b[0m \u001b[0mnp\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m      3\u001b[0m \u001b[0;32mfrom\u001b[0m \u001b[0mjoblib\u001b[0m \u001b[0;32mimport\u001b[0m \u001b[0mload\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m      4\u001b[0m \u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m      5\u001b[0m \u001b[0;31m# Load model\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n","\u001b[0;31mModuleNotFoundError\u001b[0m: No module named 'streamlit'","","\u001b[0;31m---------------------------------------------------------------------------\u001b[0;32m\nNOTE: If your import is failing due to a missing package, you can\nmanually install dependencies using either !pip or !apt.\n\nTo view examples of installing some common dependencies, click the\n\"Open Examples\" button below.\n\u001b[0;31m---------------------------------------------------------------------------\u001b[0m\n"],"errorDetails":{"actions":[{"action":"open_url","actionText":"Open Examples","url":"/notebooks/snippets/importing_libraries.ipynb"}]}}],"source":["import streamlit as st\n","import pandas as pd\n","import numpy as np\n","import plotly.express as px\n","from pickle import load\n","\n","# ----------------------------\n","# Load Model & Scaler\n","# ----------------------------\n","scaler = load(open('scaler2.pkl', 'rb'))\n","model = load(open('kmeans2.pkl', 'rb'))\n","\n","# ----------------------------\n","# Page Config\n","# ----------------------------\n","st.set_page_config(page_title=\"Country Clustering App\", layout=\"wide\")\n","st.title(\"🌍 World Development Clustering Dashboard\")\n","\n","# ----------------------------\n","# Load Dataset\n","# ----------------------------\n","@st.cache_data\n","def load_data():\n","    df = pd.read_excel(\"World_development_mesurement.xlsx\")\n","\n","    # 🔥 FIX: Replace null values properly\n","    df = df.replace({np.nan: None})\n","\n","    return df\n","\n","df = load_data()\n","\n","# ----------------------------\n","# Select Features\n","# ----------------------------\n","features = ['GDP', 'Birth Rate', 'CO2 Emissions']\n","\n","# 🔥 FIX: Ensure no missing values before model\n","df = df.dropna(subset=features)\n","\n","# ----------------------------\n","# Scaling & Prediction\n","# ----------------------------\n","scaled_data = scaler.transform(df[features])\n","df['Cluster'] = model.predict(scaled_data)\n","\n","# ----------------------------\n","# Sidebar Filters\n","# ----------------------------\n","st.sidebar.header(\"🔍 Filter Options\")\n","\n","cluster_list = sorted(df['Cluster'].unique())\n","\n","selected_cluster = st.sidebar.selectbox(\n","    \"Select Cluster\",\n","    cluster_list\n",")\n","\n","search_country = st.sidebar.text_input(\"Search Country\")\n","\n","# ----------------------------\n","# Filtering Logic\n","# ----------------------------\n","filtered_df = df[df['Cluster'] == selected_cluster]\n","\n","if search_country:\n","    filtered_df = filtered_df[\n","        filtered_df['Country'].str.contains(search_country, case=False, na=False)\n","    ]\n","\n","# ----------------------------\n","# Show Data\n","# ----------------------------\n","st.subheader(\"📊 Filtered Data\")\n","st.dataframe(filtered_df)\n","\n","# ----------------------------\n","# Graph 1: GDP vs CO2\n","# ----------------------------\n","st.subheader(\"📈 GDP vs CO2 Emissions\")\n","\n","fig1 = px.scatter(\n","    df,\n","    x='GDP',\n","    y='CO2 Emissions',\n","    color=df['Cluster'].astype(str),\n","    hover_name='Country'\n",")\n","\n","st.plotly_chart(fig1, use_container_width=True)\n","\n","# ----------------------------\n","# Graph 2: Birth Rate vs GDP\n","# ----------------------------\n","st.subheader(\"📉 Birth Rate vs GDP\")\n","\n","fig2 = px.scatter(\n","    df,\n","    x='Birth Rate',\n","    y='GDP',\n","    color=df['Cluster'].astype(str),\n","    hover_name='Country'\n",")\n","\n","st.plotly_chart(fig2, use_container_width=True)\n","\n","# ----------------------------\n","# Graph 3: 3D Plot\n","# ----------------------------\n","st.subheader(\"🌐 3D Cluster Visualization\")\n","\n","fig3 = px.scatter_3d(\n","    df,\n","    x='GDP',\n","    y='Birth Rate',\n","    z='CO2 Emissions',\n","    color=df['Cluster'].astype(str),\n","    hover_name='Country'\n",")\n","\n","st.plotly_chart(fig3, use_container_width=True)\n","\n","# ----------------------------\n","# Cluster Summary\n","# ----------------------------\n","st.subheader(\"📌 Cluster Summary\")\n","\n","summary = df.groupby('Cluster')[features].mean().round(2)\n","st.dataframe(summary)\n","\n","# ----------------------------\n","# Prediction Section\n","# ----------------------------\n","st.subheader(\"🧠 Predict Cluster\")\n","\n","gdp = st.number_input(\"Enter GDP\", min_value=0.0)\n","birth = st.number_input(\"Enter Birth Rate\", min_value=0.0)\n","co2 = st.number_input(\"Enter CO2 Emissions\", min_value=0.0)\n","\n","if st.button(\"Predict Cluster\"):\n","    input_data = np.array([[gdp, birth, co2]])\n","    scaled_input = scaler.transform(input_data)\n","    prediction = model.predict(scaled_input)\n","\n","    st.success(f\"Predicted Cluster: {prediction[0]}\")"]}]}
+# -*- coding: utf-8 -*-
+"""app.py
+
+Automatically generated by Colab.
+
+Original file is located at
+    https://colab.research.google.com/drive/17GYITXcWhk6J6T_QPiK_4PP-XlwM69Pq
+"""
+
+import streamlit as st
+import pandas as pd
+import numpy as np
+import plotly.express as px
+from pickle import load
+
+# ----------------------------
+# Load Model & Scaler
+# ----------------------------
+scaler = load(open('scaler2.pkl', 'rb'))
+model = load(open('kmeans2.pkl', 'rb'))
+
+# ----------------------------
+# Page Config
+# ----------------------------
+st.set_page_config(page_title="Country Clustering App", layout="wide")
+st.title("🌍 World Development Clustering Dashboard")
+
+# ----------------------------
+# Load Dataset
+# ----------------------------
+@st.cache_data
+def load_data():
+    df = pd.read_excel("World_development_mesurement.xlsx")
+
+    # 🔥 FIX: Replace null values properly
+    df = df.replace({np.nan: None})
+
+    return df
+
+df = load_data()
+
+# ----------------------------
+# Select Features
+# ----------------------------
+features = ['GDP', 'Birth Rate', 'CO2 Emissions']
+
+# 🔥 FIX: Ensure no missing values before model
+df = df.dropna(subset=features)
+
+# ----------------------------
+# Scaling & Prediction
+# ----------------------------
+scaled_data = scaler.transform(df[features])
+df['Cluster'] = model.predict(scaled_data)
+
+# ----------------------------
+# Sidebar Filters
+# ----------------------------
+st.sidebar.header("🔍 Filter Options")
+
+cluster_list = sorted(df['Cluster'].unique())
+
+selected_cluster = st.sidebar.selectbox(
+    "Select Cluster",
+    cluster_list
+)
+
+search_country = st.sidebar.text_input("Search Country")
+
+# ----------------------------
+# Filtering Logic
+# ----------------------------
+filtered_df = df[df['Cluster'] == selected_cluster]
+
+if search_country:
+    filtered_df = filtered_df[
+        filtered_df['Country'].str.contains(search_country, case=False, na=False)
+    ]
+
+# ----------------------------
+# Show Data
+# ----------------------------
+st.subheader("📊 Filtered Data")
+st.dataframe(filtered_df)
+
+# ----------------------------
+# Graph 1: GDP vs CO2
+# ----------------------------
+st.subheader("📈 GDP vs CO2 Emissions")
+
+fig1 = px.scatter(
+    df,
+    x='GDP',
+    y='CO2 Emissions',
+    color=df['Cluster'].astype(str),
+    hover_name='Country'
+)
+
+st.plotly_chart(fig1, use_container_width=True)
+
+# ----------------------------
+# Graph 2: Birth Rate vs GDP
+# ----------------------------
+st.subheader("📉 Birth Rate vs GDP")
+
+fig2 = px.scatter(
+    df,
+    x='Birth Rate',
+    y='GDP',
+    color=df['Cluster'].astype(str),
+    hover_name='Country'
+)
+
+st.plotly_chart(fig2, use_container_width=True)
+
+# ----------------------------
+# Graph 3: 3D Plot
+# ----------------------------
+st.subheader("🌐 3D Cluster Visualization")
+
+fig3 = px.scatter_3d(
+    df,
+    x='GDP',
+    y='Birth Rate',
+    z='CO2 Emissions',
+    color=df['Cluster'].astype(str),
+    hover_name='Country'
+)
+
+st.plotly_chart(fig3, use_container_width=True)
+
+# ----------------------------
+# Cluster Summary
+# ----------------------------
+st.subheader("📌 Cluster Summary")
+
+summary = df.groupby('Cluster')[features].mean().round(2)
+st.dataframe(summary)
+
+# ----------------------------
+# Prediction Section
+# ----------------------------
+st.subheader("🧠 Predict Cluster")
+
+gdp = st.number_input("Enter GDP", min_value=0.0)
+birth = st.number_input("Enter Birth Rate", min_value=0.0)
+co2 = st.number_input("Enter CO2 Emissions", min_value=0.0)
+
+if st.button("Predict Cluster"):
+    input_data = np.array([[gdp, birth, co2]])
+    scaled_input = scaler.transform(input_data)
+    prediction = model.predict(scaled_input)
+
+    st.success(f"Predicted Cluster: {prediction[0]}")
