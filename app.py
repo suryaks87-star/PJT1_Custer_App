@@ -7,148 +7,24 @@ Original file is located at
     https://colab.research.google.com/drive/17GYITXcWhk6J6T_QPiK_4PP-XlwM69Pq
 """
 
-import streamlit as st
-import pandas as pd
-import numpy as np
-import plotly.express as px
-from pickle import load
+st.dataframe(filtered)
 
-# ----------------------------
-# Load Model & Scaler
-# ----------------------------
-scaler = load(open('scaler2.pkl', 'rb'))
-model = load(open('kmeans2.pkl', 'rb'))
+# Graph
+fig = px.scatter(df, x='GDP', y='CO2 Emissions',
+                 color=df['Cluster'].astype(str),
+                 hover_name='Country')
 
-# ----------------------------
-# Page Config
-# ----------------------------
-st.set_page_config(page_title="Country Clustering App", layout="wide")
-st.title("🌍 World Development Clustering Dashboard")
+st.plotly_chart(fig)
 
-# ----------------------------
-# Load Dataset
-# ----------------------------
-@st.cache_data
-def load_data():
-    df = pd.read_excel("World_development_mesurement.xlsx")
+# Prediction
+st.subheader("Predict Cluster")
 
-    # 🔥 FIX: Replace null values properly
-    df = df.replace({np.nan: None})
+gdp = st.number_input("GDP")
+birth = st.number_input("Birth Rate")
+co2 = st.number_input("CO2 Emissions")
 
-    return df
-
-df = load_data()
-
-# ----------------------------
-# Select Features
-# ----------------------------
-features = ['GDP', 'Birth Rate', 'CO2 Emissions']
-
-# 🔥 FIX: Ensure no missing values before model
-df = df.dropna(subset=features)
-
-# ----------------------------
-# Scaling & Prediction
-# ----------------------------
-scaled_data = scaler.transform(df[features])
-df['Cluster'] = model.predict(scaled_data)
-
-# ----------------------------
-# Sidebar Filters
-# ----------------------------
-st.sidebar.header("🔍 Filter Options")
-
-cluster_list = sorted(df['Cluster'].unique())
-
-selected_cluster = st.sidebar.selectbox(
-    "Select Cluster",
-    cluster_list
-)
-
-search_country = st.sidebar.text_input("Search Country")
-
-# ----------------------------
-# Filtering Logic
-# ----------------------------
-filtered_df = df[df['Cluster'] == selected_cluster]
-
-if search_country:
-    filtered_df = filtered_df[
-        filtered_df['Country'].str.contains(search_country, case=False, na=False)
-    ]
-
-# ----------------------------
-# Show Data
-# ----------------------------
-st.subheader("📊 Filtered Data")
-st.dataframe(filtered_df)
-
-# ----------------------------
-# Graph 1: GDP vs CO2
-# ----------------------------
-st.subheader("📈 GDP vs CO2 Emissions")
-
-fig1 = px.scatter(
-    df,
-    x='GDP',
-    y='CO2 Emissions',
-    color=df['Cluster'].astype(str),
-    hover_name='Country'
-)
-
-st.plotly_chart(fig1, use_container_width=True)
-
-# ----------------------------
-# Graph 2: Birth Rate vs GDP
-# ----------------------------
-st.subheader("📉 Birth Rate vs GDP")
-
-fig2 = px.scatter(
-    df,
-    x='Birth Rate',
-    y='GDP',
-    color=df['Cluster'].astype(str),
-    hover_name='Country'
-)
-
-st.plotly_chart(fig2, use_container_width=True)
-
-# ----------------------------
-# Graph 3: 3D Plot
-# ----------------------------
-st.subheader("🌐 3D Cluster Visualization")
-
-fig3 = px.scatter_3d(
-    df,
-    x='GDP',
-    y='Birth Rate',
-    z='CO2 Emissions',
-    color=df['Cluster'].astype(str),
-    hover_name='Country'
-)
-
-st.plotly_chart(fig3, use_container_width=True)
-
-# ----------------------------
-# Cluster Summary
-# ----------------------------
-st.subheader("📌 Cluster Summary")
-
-summary = df.groupby('Cluster')[features].mean().round(2)
-st.dataframe(summary)
-
-# ----------------------------
-# Prediction Section
-# ----------------------------
-st.subheader("🧠 Predict Cluster")
-
-gdp = st.number_input("Enter GDP", min_value=0.0)
-birth = st.number_input("Enter Birth Rate", min_value=0.0)
-co2 = st.number_input("Enter CO2 Emissions", min_value=0.0)
-
-if st.button("Predict Cluster"):
-    input_data = np.array([[gdp, birth, co2]])
-    scaled_input = scaler.transform(input_data)
-    prediction = model.predict(scaled_input)
-
-    st.success(f"Predicted Cluster: {prediction[0]}")
+if st.button("Predict"):
+    data = np.array([[gdp, birth, co2]])
+    scaled = scaler.transform(data)
+    pred = model.predict(scaled)
+    st.success(f"Cluster: {pred[0]}")
